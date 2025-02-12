@@ -1,25 +1,34 @@
+import subprocess
+
 import automatic_code_review_commons as commons
 
-def review(config):
-    path_target = config['path_target']
-    path_source = config['path_source']
 
-    merge = config['merge']
-    project_id = merge['project_id']
-    merge_request_id = merge['merge_request_id']
-    
+def review(config):
+    message = config['message']
+    path_source = config['path_source']
+    changes = config['merge']['changes']
+
     comments = []
-    
-    # TODO IMPLEMENTAR EXTENSION
-    #  O OBJETO DE COMENTARIO DEVE POSSUIR O SEGUINTE FORMATO
-    #  commons.comment_create(
-    #     comment_id=commons.comment_generate_id( "" ),
-    #     comment_path="",
-    #     comment_description="",
-    #     comment_snipset=True,
-    #     comment_end_line=1,
-    #     comment_start_line=1,
-    #     comment_language="",
-    # )
+
+    for change in changes:
+        if change['deleted_file']:
+            continue
+
+        new_path = change['new_path']
+        path = path_source + "/" + new_path
+
+        if path.endswith(".go"):
+            result = subprocess.run(["gofmt", "-d", path], capture_output=True, text=True)
+
+            if result.stdout:
+                comment = commons.comment_create(
+                    comment_id=commons.comment_generate_id(new_path),
+                    comment_path=new_path,
+                    comment_description=message.replace("${FILE_PATH}", new_path),
+                    comment_snipset=False,
+                    comment_end_line=1,
+                    comment_start_line=1,
+                )
+                comments.append(comment)
 
     return comments
